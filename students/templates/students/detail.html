@@ -1,4 +1,5 @@
 <!-- students/templates/students/detail.html-->
+{% extends "base.html" %}
 {% block page_title %}
     <h2>Student Detail</h2>
 {% endblock page_title %}
@@ -14,6 +15,7 @@
                 <th>Date of Birth</th>
                 <th>Enrollment Date</th>
                 <th>Grade</th>
+                <th>Operation</th>
             </tr>
         </thead>
         <tbody>
@@ -25,7 +27,6 @@
                 <td>{{ student.enrollment_date }}</td>
                 <td>{{ student.grade }}</td>
                 <td>
-                    <a href="{% url 'students_detail' student.id %}" class="btn btn-info">Detail</a>
                     <a href="{% url 'students_edit' student.id %}" class="btn btn-primary">Edit</a>
                 </td>
             </tr>

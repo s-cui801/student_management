@@ -1,9 +1,16 @@
 <!-- students/templates/students/add.html-->
 
+{% extends "base.html" %}
 {% block page_title %}
-    <h2>Add Student</h2>
+    <h2>Add a new student</h2>
 {% endblock page_title %}
 
 {% block page_content %}
-    
+    {% block student %}
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+    {% endblock student %}
 {% endblock page_content %}

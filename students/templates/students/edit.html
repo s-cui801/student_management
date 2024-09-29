@@ -1,8 +1,16 @@
 <!-- students/templates/students/edit.html-->
+{% extends "base.html" %}
+
 {% block page_title %}
     <h2>Edit Student</h2>
 {% endblock page_title %}
 
 {% block page_content %}
-
+    {% block student %}
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+    {% endblock student %}
 {% endblock page_content %}
