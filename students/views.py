@@ -2,6 +2,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from students.models import Student
 from students.forms import StudentForm
+from django.contrib.auth.decorators import login_required
 
 
 # Create your views here.
@@ -23,6 +24,7 @@ def students_detail(request, student_id):
     return render(request, 'students/detail.html', context)
 
 '''Add a new student'''
+@login_required
 def students_add(request):
     form = StudentForm()
     if request.method == 'POST':
@@ -44,6 +46,7 @@ def students_add(request):
     return render(request, 'students/add.html', context)
 
 '''Edit an existing student'''
+@login_required
 def students_edit(request, student_id):
     student = Student.objects.get(id=student_id)
     if request.method == 'POST':

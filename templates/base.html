@@ -8,10 +8,29 @@
     <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
 </head>
 <body>
-<h1>Student Management System</h1>
-<a href="{% url "students_list" %}">Home</a>
-<hr>
-{% block page_title %}{% endblock page_title %}
-{% block page_content %}{% endblock page_content %}
+    <header>
+        <h1>Student Management System</h1>
+        <nav>
+            <ul>
+                <li><a href="{% url "students_list" %}">Students</a></li>
+                
+                <!-- Conditional Login/Logout Button -->
+                {% if user.is_authenticated %}
+                    <li>
+                        <form method="post" action="{% url 'logout' %}">
+                            {% csrf_token %}
+                            <button type="submit">Logout</button>
+                        </form>
+                    </li>
+                    <li>Welcome, {{ user.username }}!</li>
+                {% else %}
+                    <li><a href="{% url 'login' %}">Login</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+    <hr>
+    {% block page_title %}{% endblock page_title %}
+    {% block page_content %}{% endblock page_content %}
 </body>
 </html>

@@ -1,7 +1,7 @@
 # Student Management System Report
 ## 1. Project Setup
 ### Set up the development environment
-
+// TODO:
 ### Start the Django project
 In the console, use the following command to start the Django project.
 ```
@@ -219,6 +219,72 @@ Add the following code to `edit.html`
 ```
 
 Now we can edit the information of an existing student.
+插入视频：
 ### Validation for email
 
 ### Validation for grades
+
+## 6. User Authentication
+In this project, I use Django’s built-in authentication views and decorators to restrict access to authenticated users.
+Here I encountered a problem because I did not know how to implement user authentication using Django. I asked ChatGPT for help.
+### Set up the authentication system
+First, ensure that Django's authentication systme is included in my project settings. It should be configured in `settings.py` by default.
+Check `settings.py` to ensure:
+```py
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    # other installed apps...
+]
+```
+### Create Login/Logout views
+- views: Django provides built-in views for login and logout.
+- urls: We still need to include routes for urls to use Django's built-in authentication views.
+```python
+urlpatterns = [
+    # other URL patterns...
+    path("login/", auth_views.LoginView.as_view(), name="login"),
+    path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+]
+```
+- templates: Create a `login.html` under `templates/registration` directory. Because by default, Django will look for the `login.html` file under `templates/registration` directory.
+
+Now navigate to `http://localhost:8000/students/login/`, we will see the login page:
+![alt text](images/login1.png)
+
+### Restrict access using
+To ensure only authenticated users can operate student records, I need to restrict access to views by using Django’s built-in `@login_required` decorator.
+
+In `views.py`, I apply the `@login_required` decorator to functions which should only be accessed by authenticated users: add, edit and delete students. 
+```python
+# other imports...
+from django.contrib.auth.decorators import login_required
+
+'''Add a new student'''
+@login_required
+def students_add(request):
+    ...
+
+'''Edit an existing student'''
+@login_required
+def students_edit(request, student_id):
+    ...
+
+'''Delete a existing student'''
+@login_required
+def students_delete(request, student_id):
+    ...
+```
+
+### Redirect users
+After login, users will be redirected to the home page. After logout, users will be redirected to login page. Specify where users will be redirected in `settings.py`.
+```python
+LOGIN_REDIRECT_URL = '/students/'  # After login, users will be redirected to the home page
+LOGOUT_REDIRECT_URL = '/login/'     # After logout, users will be redirected to login
+```
+
+### Add user login/logout button on each page
+#### Change `base.html`
+#### Problem
+I get HTTP error code 405 (解释一下意思) at first. After debugging and reading documents, I realized that Django's built-in LogoutView requires a POST method by default.
+Therefore I wrap the logout button in a **form** that submits via POST instead of using anchor tag via GET method.
