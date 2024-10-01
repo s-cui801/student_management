@@ -72,3 +72,10 @@ def students_edit(request, student_id):
         }),
     }
     return render(request, 'students/edit.html', context)
+
+'''Delete an existing student'''
+@login_required
+def students_delete(request, student_id):
+    student = Student.objects.get(id=student_id)
+    student.delete()
+    return HttpResponseRedirect('/students/')
