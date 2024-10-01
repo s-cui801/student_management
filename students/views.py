@@ -1,7 +1,7 @@
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from students.models import Student
-from students.forms import StudentForm
+from students.forms import StudentForm, StudentSearchForm
 from django.contrib.auth.decorators import login_required
 
 
@@ -9,9 +9,22 @@ from django.contrib.auth.decorators import login_required
 # Path: students/views.py
 '''Display a list of all students'''
 def students_list(request):
+    form = StudentSearchForm(request.GET)
     students = Student.objects.all().order_by('-enrollment_date')
+    
+    if form.is_valid():
+        first_name = form.cleaned_data['first_name']
+        last_name = form.cleaned_data['last_name']
+        # Filter students by first name if it was submitted
+        if first_name:
+            students = students.filter(first_name__icontains=first_name)
+        # Filter students by last name if it was submitted
+        if last_name:
+            students = students.filter(last_name__icontains=last_name)
+
     context = {
         'students': students,
+        'form': form,
     }
     return render(request, 'students/list.html', context)
 

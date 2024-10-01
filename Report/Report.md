@@ -220,6 +220,37 @@ Add the following code to `edit.html`
 
 Now we can edit the information of an existing student.
 插入视频：
+
+### Delete student information
+1. Update `views.py`
+   ```py
+   '''Delete an existing student'''
+    @login_required
+    def students_delete(request, student_id):
+        student = Student.objects.get(id=student_id)
+        student.delete()
+        return HttpResponseRedirect('/students/')
+   ```
+2. Update templates
+   Add `delete` button on the list page: `list.html`
+   ```html
+   <tbody>
+            {% for student in students %}
+                <tr>
+                    <td>{{ student.first_name }}</td>
+                    <!--Other columns...-->
+                    <td>
+                        <!--Other buttons...-->
+                        <a href="{% url 'students_delete' student.id %}" class="btn btn-danger">Delete</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+   ```
+
+   Also add `delete` button on the student detail page by updating `details.html`.
+### Include routes for urls
+
 ### Validation for email
 
 ### Validation for grades

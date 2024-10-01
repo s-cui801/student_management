@@ -7,6 +7,17 @@
 
 {% block page_content %}
     {% block students %}
+    <form method="GET" action="{% url 'students_list' %}">
+        <div>
+            {{ form.first_name.label_tag }}
+            {{ form.first_name }}
+        </div>
+        <div>
+            {{ form.last_name.label_tag }}
+            {{ form.last_name }}
+        </div>
+        <button type="submit">Search</button>
+    </form>
     <table class="table table-striped">
         <thead>
             <tr>
