@@ -448,15 +448,93 @@ LOGOUT_REDIRECT_URL = '/login/'     # After logout, users will be redirected to 
 ```
 
 ### Add user login/logout button on each page
+There should be a login/logout button on each page, depending on the current status of user login. To implement this, I changed the `base.html`.
 #### Change `base.html`
-#### Problem
-I get HTTP error code 405 (解释一下意思) at first. After debugging and reading documents, I realized that Django's built-in LogoutView requires a POST method by default.
-Therefore I wrap the logout button in a **form** that submits via POST instead of using anchor tag via GET method.
+Add a conditional login/logout button in the body of `base.html`.
+```html
+<body>
+    <header>
+        <h1>Student Management System</h1>
+        <nav>
+            <ul>
+                <li><a href="{% url "students_list" %}">Students</a></li>
+                
+                <!-- Conditional Login/Logout Button -->
+                {% if user.is_authenticated %}
+                    <li>
+                        <form method="post" action="{% url 'logout' %}">
+                            {% csrf_token %}
+                            <button type="submit">Logout</button>
+                        </form>
+                    </li>
+                    <li>Welcome, {{ user.username }}!</li>
+                {% else %}
+                    <li><a href="{% url 'login' %}">Login</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+    <hr>
+    {% block page_title %}{% endblock page_title %}
+    {% block page_content %}{% endblock page_content %}
+</body>
+```
+### Problem
+I got a HTTP 405 error when I logged out. 
+### Solution
+After debugging and reading documents, I realized that Django's built-in LogoutView requires a POST method by default. But I was using an anchor tag in `base.html`. So when I logged out, the browser sent a GET method request.
+Therefore I wrap the logout button in a **Form** that submits via POST instead of using anchor tag via GET method.
 
 ## 7. Search by name
-
+To implement search by first name and last name, views and templates need to be modified.
+### Add a search form in `forms.py`
+```py
+# forms.py
+class StudentSearchForm(forms.Form):
+    first_name = forms.CharField(max_length=100, required=False, label='First Name')
+    last_name = forms.CharField(max_length=100, required=False, label='Last Name')
+```
+### Modify the students view
+Add the following note to the `list()` function in `views.py`
+```py
+if form.is_valid():
+        first_name = form.cleaned_data['first_name']
+        last_name = form.cleaned_data['last_name']
+        # Filter students by first name if it was submitted
+        if first_name:
+            students = students.filter(first_name__icontains=first_name)
+        # Filter students by last name if it was submitted
+        if last_name:
+            students = students.filter(last_name__icontains=last_name)
+```
+Use `icontains` to filter students' names. If no query is present, it returns all students.
+### Add the search bar to templates
+Ensure that the template where the students are listed `students_list.html` has the search bar included, as shown below:
+```html
+{% block page_content %}
+    {% block students %}
+    <form method="GET" action="{% url 'students_list' %}">
+        <div>
+            {{ form.first_name.label_tag }}
+            {{ form.first_name }}
+        </div>
+        <div>
+            {{ form.last_name.label_tag }}
+            {{ form.last_name }}
+        </div>
+        <button type="submit">Search</button>
+    </form>
+    <!--Other codes...-->
+    {% endblock students %}
+{% endblock page_content %}
+```
+Now the student list page with a search looks like this:
+![alt text](images/Search.png)
+Test:
+![alt text](images/Test_Search_lily.png)
 ## 8. Pagination
 Modify views and templates to implement pagination of students list.
+### Modify list view
 First, import Paginator in `views.py` and add the following codes:
 ```python
 # views.py
@@ -476,17 +554,54 @@ def students_list(request):
     return render(request, 'students/list.html', context)
 ```
 Now `page_obj` contains the students on page `page_number`.
+### Modify list template
 Then modify the correspoding templates. The loop should now be over `page_obj` instead of the full set of `students`.
 ```html
+<!--list.html-->
+<!-- Pagination Controls -->
+    <div class="pagination">
+        <span class="step-links">
+            {% if page_obj.has_previous %}
+                <a href="?page=1{% if request.GET.first_name %}&first_name={{ request.GET.first_name }}{% endif %}{% if request.GET.last_name %}&last_name={{ request.GET.last_name }}{% endif %}">First</a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.first_name %}&first_name={{ request.GET.first_name }}{% endif %}{% if request.GET.last_name %}&last_name={{ request.GET.last_name }}{% endif %}">Previous</a>
+            {% endif %}
 
+            <span class="current">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if request.GET.first_name %}&first_name={{ request.GET.first_name }}{% endif %}{% if request.GET.last_name %}&last_name={{ request.GET.last_name }}{% endif %}">Next</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.first_name %}&first_name={{ request.GET.first_name }}{% endif %}{% if request.GET.last_name %}&last_name={{ request.GET.last_name }}{% endif %}">Last</a>
+            {% endif %}
+        </span>
+    </div>
 ```
-### Problem and solution
-I found that when I used searching, after swithcing pages, the search conditions were gone.
+
+### Problem
 To ensure the search query parameters are maitained in the pagination links, I need to append those parameters to the URLs when generating pagination links(e.g. Previous Page or First Page).
-这里贴代码
-However, because it requires developers to manually append query parameters to the pagination links, this solution can be quite 繁琐, especially if we use more filter parameters.
-A more elegant solution will be:
-这里贴新的代码
+However, appending query parameters for each pagination is cumbersome.
+### Solution
+Django provides a urlencode method, which converts a dictionary into a URL-encoded query string. I can append this to the pagination links in the template instead of manually appending parameters.
+```html
+<div class="pagination">
+    <span class="step-links">
+        {% if page_obj.has_previous %}
+            <a href="?page=1&{{ request.GET.urlencode }}">First</a>
+            <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}">Previous</a>
+        {% endif %}
+
+        <span class="current">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}">Next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}&{{ request.GET.urlencode }}">Last</a>
+        {% endif %}
+    </span>
+</div>
+```
 
 ## 9. Error Handling
 ### Non-existing student
@@ -494,6 +609,7 @@ When user try to access information of a student that does not exist (e.g. by ma
 ![](images/DoesNotExistException.png)
 
 There are two ways to properly handle such errors, either manually or automatically. I choose to manually catch this error and display a custom "Not Found" page.
+#### Update detail view
 First, update `students_detail` view.
 ```python
 # views.py
@@ -513,12 +629,32 @@ def students_detail(request, student_id):
     }
     return render(request, 'students/detail.html', context)
 ```
-
+#### Create 404 template
 Then, create a custom 404 error page in templates called `404.html`. This file should be in the templates of root folder, the same place with `base.html`, because it is a top-level template and should not be tied to any specific functionality.
 ```html
+<!-- templates/404.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Not Found</title>
+</head>
+<body>
+    <h1>Oops! The student you're looking for does not exist.</h1>
+    <p>It seems the student record was not found. Please check the URL or go back to the <a href="{% url 'students_list' %}">student list</a>.</p>
+</body>
+</html>
 ```
-Also modify the debug status and allowed hosts in `settings.py` so that my custom 404 handling page would work:
+#### Change the debug status to False
+Also modify the debug status and allowed hosts in `settings.py` so that my custom 404 handling page would work.
+
+Note that once the debug status is changed to False, we need to add allowed hosts.
 ```py
+# settings.py
+DEBUG = False
+
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 ```
 Now when I try to access the detail page of a non-existing student with url `http://127.0.0.1:8000/students/detail/15/` (there is no students with id=15), the custom 404 page will show:
 ![alt text](images/StudentNotFound.png)
@@ -534,6 +670,8 @@ By adding `clean_<FieldName>>` function to a form class, we can override the def
 
 #### Names
 To ensure only letters can be used in first names and last names, first we add the following functions to `StudentForm` and `StudentSearchForm` class. The former is for adding a new student and the latter is for searching students.
+##### Problem
+Initially I wrote the following code:
 ```python
 # Custom validation for first name
     def clean_first_name(self):
@@ -553,19 +691,112 @@ To ensure only letters can be used in first names and last names, first we add t
         if not re.match(r'^[A-Za-z]+$', last_name):
             raise ValidationError('Last name must contain only letters.')
 ```
+Then during tests for search functionality, I found that the page could not display the right result if either name is empty.
+##### Solution
+I changed the validation code for `StudentSearchForm` to the following, ensure that when there is no query parameter present, the form is still valid and there should not be a validation process for no input.
+```py
+# Custom validation for first name
+# forms.pf
+class StudentSearchForm(forms.Form):
+    # Other codes...
 
+    def clean_first_name(self):
+        first_name = self.cleaned_data.get('first_name')
+        if first_name:
+            # Ensure the name contains only alphabetic characters
+            if not re.match(r'^[A-Za-z]+$', first_name):
+                raise ValidationError('First name must contain only letters.')
+        
+        return first_name
+
+    # Custom validation for last name
+    def clean_last_name(self):
+        last_name = self.cleaned_data.get('last_name')
+
+        if last_name:
+            # Ensure the name contains only alphabetic characters
+            if not re.match(r'^[A-Za-z]+$', last_name):
+                raise ValidationError('Last name must contain only letters.')
+        
+        return last_name
+```
 #### Dates
+To ensure that both date of birth and enrollment date cannot be in the future, add these to `forms.py`:
+```py
+# Custom validation for enrollment_date
+    def clean_enrollment_date(self):
+        enrollment_date = self.cleaned_data.get('enrollment_date')
+        
+        # Ensure the date is in the past
+        if enrollment_date > date.today():
+            raise ValidationError('Enrollment date must be in the past.')
+        
+        return enrollment_date
 
+    # Custom validation for date_of_birth
+    def clean_date_of_birth(self):
+        date_of_birth = self.cleaned_data.get('date_of_birth')
+        
+        # Ensure the date is in the past
+        if date_of_birth >= date.today():
+            raise ValidationError('Date of birth must be in the past.')
+        
+        return date_of_birth
+```
 #### Email
-
-Next, update `views.py` so that if validation fails, the form with errors will be passed back to the templates:
-```html
-
+Django validates email address input automatically for EmailField.
+### Display error message in views
+Next, update `views.py` so that if validation fails, the form with errors will be passed back to the templates. If the form is valid, then proceed to the view. Show error message if the form is invalid.
+```py
+    if form.is_valid():
+        # Other codes...
 ```
 
-Then the templates
+### Update the templates
 - Generate invalid message under each field.
+Take the first name field of `add.html` page as an example:
+```html
+<!-- First Name Field with Error Handling -->
+        <div class="form-group">
+            <label for="id_first_name">First Name:</label>
+            <input type="text" id="id_first_name" name="first_name" value="{{ form.first_name.value|default_if_none:''  }}" placeholder="Enter first name">
+            {% if form.first_name.errors %}
+                <div class="error">
+                    <ul>
+                        {% for error in form.first_name.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+```
+When user tries to add a student with invalid first name:
+![alt text](images/Validation_Form_Test.png)
 - Retain values for invalid inputs
+When user tries to update student information with invalid input, I want to the form to present the original valid information as well as the error message, instead of showing user the invalid input they just made.
+Therefore, in `edit.html`, the form will show `student` attributes by default instead of `form` value.
+```html
+<!-- First Name Field with Error Handling -->
+        <div class="form-group">
+            <label for="id_first_name">First Name:</label>
+            <input type="text" id="id_first_name" name="first_name" value="{{ student.first_name  }}" placeholder="Enter first name">
+            {% if form.first_name.errors %}
+                <div class="error">
+                    <ul>
+                        {% for error in form.first_name.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+```
+The value of input is set as `student.first_name`, which is the first name of the current student instead of the input of form.
+
+The validation in editing looks this way:
+<video controls src="videos/Edit_With_Validation_Demo.mp4" title="Title"></video>
+
 #### Problem
 I forget grade field when I wrote the edit.html. By printing debug message, I find the mistake and solve it.
 ```python
@@ -583,6 +814,7 @@ if request.method == 'POST':
         else:
             print("Form is invalid. Errors:", form.errors)  # Debug statement
 ```
+
 ### Input validation in pagination
 To ensure that invalid page number input (e.g. `http://127.0.0.1:8000/students/?page=a`) won't crash the page, modify the pagination part in `views.py`. Django will raise a ValueError in the paginator if page number is invalid. I modify my view to default to the first page in such cases:
 ```py
@@ -601,3 +833,7 @@ def students_list(request):
 
     # Other codes...
 ```
+Example:
+Try to access `page = abc`:
+![alt text](images/Test_Validation_Pagination.png)
+By default, it shows the first page of students.

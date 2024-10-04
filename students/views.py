@@ -17,7 +17,9 @@ def students_list(request):
         first_name = form.cleaned_data['first_name']
         last_name = form.cleaned_data['last_name']
         # Filter students by first name if it was submitted
+        print("form is valid")
         if first_name:
+            print("first name is not empty")
             students = students.filter(first_name__icontains=first_name)
         # Filter students by last name if it was submitted
         if last_name:

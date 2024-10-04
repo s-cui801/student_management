@@ -41,7 +41,7 @@ class StudentForm(forms.Form):
         enrollment_date = self.cleaned_data.get('enrollment_date')
         
         # Ensure the date is in the past
-        if enrollment_date >= date.today():
+        if enrollment_date > date.today():
             raise ValidationError('Enrollment date must be in the past.')
         
         return enrollment_date
@@ -63,19 +63,20 @@ class StudentSearchForm(forms.Form):
     # Custom validation for first name
     def clean_first_name(self):
         first_name = self.cleaned_data.get('first_name')
-        
-        # Ensure the name contains only alphabetic characters
-        if not re.match(r'^[A-Za-z]+$', first_name):
-            raise ValidationError('First name must contain only letters.')
+        if first_name:
+            # Ensure the name contains only alphabetic characters
+            if not re.match(r'^[A-Za-z]+$', first_name):
+                raise ValidationError('First name must contain only letters.')
         
         return first_name
 
     # Custom validation for last name
     def clean_last_name(self):
         last_name = self.cleaned_data.get('last_name')
-        
-        # Ensure the name contains only alphabetic characters
-        if not re.match(r'^[A-Za-z]+$', last_name):
-            raise ValidationError('Last name must contain only letters.')
+
+        if last_name:
+            # Ensure the name contains only alphabetic characters
+            if not re.match(r'^[A-Za-z]+$', last_name):
+                raise ValidationError('Last name must contain only letters.')
         
         return last_name
