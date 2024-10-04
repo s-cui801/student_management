@@ -1,29 +1,94 @@
 # Student Management System Report
+## 0. Overview
+The Student Management System is a web-based application designed to manage student data efficiently for educational institutes. The primary goal of the system is to allow administrators to add, edit, delete student information, with features like search functionality and pagination to handle large volumes of data.
+
+The project uses Django for backend development and HTML/CSS for the user interface. The system is secured with user authentication to restrict certain actions to authorized users only. Additionally, the system has robust error handling and input validation to ensure data integrity.
 ## 1. Project Setup
 ### Set up the development environment
-// TODO:
+I created a virtual environment to manage dependencies. Open command inside the project root directory and set up the virtual environment
+```shell
+python -m venv venv
+```
+Next, activate the virtual environment:
+```shell
+.\venv\Scripts\activate
+```
+
+Seeing the following line means that the virtual environment is successfully activated:
+```shell
+(venv) D:\24fall-term\GNG5300\Django-projects>
+```
+
+Then, set up the virtual environment with necessary dependencies. Install Django using `pip`:
+```shell
+(venv) $ python -m pip install Django
+```
 ### Start the Django project
 In the console, use the following command to start the Django project.
 ```
 django-admin startproject student_management .
 ```
 Note: If there is no dot at the end, Django will create a nested project directory, e.g. `/student_management/student_management`.
+
 Use the following command to run the project.
 ```
 py manage.py runserver
 ```
-The project runs successfully.
+Go to `http://127.0.0.1:8000/` and the following should show up. The project runs successfully.
+
 ![alt text](images/image.png)
 
 ### Add the students app
+Create a new Django app named `students`:
+```shell
+python manage.py startapp students
+```
+Next, install the app in project `student_management`. In `student_management\settings.py`, add the configuration class of `students` app:
+```py
+# settings.py
+INSTALLED_APPS = [
+    'students.apps.StudentsConfig', # Add this line
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+]
+```
 
 ## 2. Create Student Model
+To store student data and to display it on the website, I use Django's built-in ORM to create models to represent database tables. 
 ### Describe the database schema in models.py
+Create a `Student` model to store information:
+```py
+# students/model.py
+from django.db import models
+
+class Student(models.Model):
+    first_name = models.CharField(max_length=255)
+    last_name = models.CharField(max_length=255)
+    email = models.EmailField()
+    date_of_birth = models.DateField()
+    enrollment_date = models.DateField()
+    grade = models.IntegerField()
+```
+
 ### Create a migration
+The Student model in `models.py` is a description of the database schema. To actually create the database, first I need to create a migration, which is a file containing the changes Django needs to make to the database. In the project directory `student_management`, use command:
+```shell
+python manage.py makemigrations students
+```
 ### Apply the migrations and create databases
+After generate migrations, I need to apply the migrations to create databases:
+```shell
+python manage.py migrate students
+```
 
 ## 3. Set up admin interface
+The Django admin site allows me to create, update and delete instances of students through a nice web interface.
 ### Apply existing migrations
+First, apply some existing migrations in Django:
 ```shell
 (venv) D:\24fall-term\GNG5300\Django-projects\student_management>python manage.py migrate
 Operations to perform:
@@ -32,6 +97,7 @@ Running migrations:
   ...
 ```
 ### Add a superuser
+Then add myself as the superuser:
 ```
 python manage.py createsuperuser
 ```
@@ -56,11 +122,12 @@ Now the Student model is visible in the admin page, and it only displays the fir
 ![alt text](images/image-2.png)
 
 ## 4. Views and Templates
-I created four view functions for my students app in the `views.py` file in the `students/` directory:
+I created five view functions for my students app in the `views.py` file in the `students/` directory:
 - **students_list( )** will display a list of all students.
 - **students_detail( )** will display the detail of one student. 
 - **students_add( )** will later show a form to allow users to add a new student.
 - **students_edit( )** will later show a form to allow users to update information of an existing student.
+- **students_delete()** will delete the selected student
 
 ```python
 # students/views.py
@@ -94,8 +161,43 @@ def students_edit(request, student_id):
         'student': student,
     }
     return render(request, 'students/edit.html', context)
+
+'''Delete an existing student'''
+def students_delete(request, student_id):
+    student = Student.objects.get(id=student_id)
+    student.delete()
+    return HttpResponseRedirect('/students/')
 ```
-After adding corresponding templates for each view, this is what each web page looks like:
+### Build the templates
+I built four templates for adding, listing, editing and displaying the details of student information in students folder and one `base.html` in the templates in the project folder. 
+
+Specific codes can be seen in the repository.
+### Include routes for urls
+Create `urls.py` in `students/` and add the urls for the five views:
+```py
+from django.urls import path
+from django.contrib.auth import views as auth_views
+from . import views
+
+urlpatterns = [
+    path("", views.students_list, name="students_list"),
+    path("detail/<int:student_id>/", views.students_detail, name="students_detail"),
+    path("add/", views.students_add, name="students_add"),
+    path("edit/<int:student_id>/", views.students_edit, name="students_edit"),
+    path("delete/<int:student_id>/", views.students_delete, name="students_delete"),
+]
+```
+Once the app-specific URLs are ready, add them in the project configuration in `student_management/urls.py` using `include()`:
+```py
+from django.contrib import admin
+from django.urls import path, include
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('students/', include('students.urls')),
+]
+```
+
+This is what each web page looks like:
 ### Display a list of all students
 ![alt text](images/image-5.png)
 Url:  `http://localhost:8000/students/`
@@ -110,10 +212,75 @@ It is an empty page for now.
 ### Edit an existing student’s information
 ![alt text](images/image-7.png)
 It is an empty page for now.
+### Delete a student
+Add `delete` button on the list page:
+```html
+<!--list.html-->
+<tbody>
+    {% for student in students %}
+        <tr>
+            <td>{{ student.first_name }}</td>
+            <!--Other columns...-->
+            <td>
+                <!--Other buttons...-->
+                <a href="{% url 'students_delete' student.id %}" class="btn btn-danger">Delete</a>
+            </td>
+        </tr>
+    {% endfor %}
+</tbody>
+```
+
+Also add `delete` button on the student detail page by updating `details.html`.
+
+### Make the page look nicer
+Use `base.html` and an external CSS library to make the page look nicer:
+
+```html
+<!-- templates/base.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Student Management System</title>
+    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+</head>
+<body>
+    <header>
+        <h1>Student Management System</h1>
+        <nav>
+            <ul>
+                <li><a href="{% url "students_list" %}">Students</a></li>
+                
+                <!-- Conditional Login/Logout Button -->
+                {% if user.is_authenticated %}
+                    <li>
+                        <form method="post" action="{% url 'logout' %}">
+                            {% csrf_token %}
+                            <button type="submit">Logout</button>
+                        </form>
+                    </li>
+                    <li>Welcome, {{ user.username }}!</li>
+                {% else %}
+                    <li><a href="{% url 'login' %}">Login</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+    <hr>
+    {% block page_title %}{% endblock page_title %}
+    {% block page_content %}{% endblock page_content %}
+</body>
+</html>
+```
 
 ## 5. Forms
-### Add a student
-1. Create `forms.py` under `students` app folder, add the `StudentForm` class with all the fields of student.
+Forms are used to add and edit student information. 
+### Create StudentForm
+Create `forms.py` under `students` app folder, add the `StudentForm` class with all the fields of student.
+
+By using the built-in `EmailField`, Django will automatically check the format of email input. Also the attributes of `IntegerField` makes Django validate whether grade input is between 1 and 12 automatically.
+
 ```python
 # students/forms.py
 from django import forms
@@ -127,7 +294,8 @@ class StudentForm(forms.Form):
     grade = forms.IntegerField(min_value=1, max_value=12)
 
 ```
-2. Update `views.py`
+### Add a student
+1. Update `views.py`
 ```py
 # students/views.py
 '''Add a new student'''
@@ -151,7 +319,7 @@ def students_add(request):
         }
     return render(request, 'students/add.html', context)
 ```
-3. Update `add.html` template.
+2. Update `add.html` template.
 ```html
 <!-- students/templates/students/add.html-->
 
@@ -174,7 +342,7 @@ Now the page for adding students looks:
 ![alt text](images/add_student.png)
 
 ### Edit information of an existing student
-1. Update views.py
+Update `views.py`
 ```py
 '''Edit an existing student'''
 def students_edit(request, student_id):
@@ -203,9 +371,8 @@ def students_edit(request, student_id):
     }
     return render(request, 'students/edit.html', context)
 ```
-2. Update edit.html template
-
-Add the following code to `edit.html`
+Update `edit.html` template.
+   Add the following code to `edit.html`
 ```html
 {% block page_content %}
     {% block student %}
@@ -219,41 +386,7 @@ Add the following code to `edit.html`
 ```
 
 Now we can edit the information of an existing student.
-插入视频：
-
-### Delete student information
-1. Update `views.py`
-   ```py
-   '''Delete an existing student'''
-    @login_required
-    def students_delete(request, student_id):
-        student = Student.objects.get(id=student_id)
-        student.delete()
-        return HttpResponseRedirect('/students/')
-   ```
-2. Update templates
-   Add `delete` button on the list page: `list.html`
-   ```html
-   <tbody>
-            {% for student in students %}
-                <tr>
-                    <td>{{ student.first_name }}</td>
-                    <!--Other columns...-->
-                    <td>
-                        <!--Other buttons...-->
-                        <a href="{% url 'students_delete' student.id %}" class="btn btn-danger">Delete</a>
-                    </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-   ```
-
-   Also add `delete` button on the student detail page by updating `details.html`.
-### Include routes for urls
-
-### Validation for email
-
-### Validation for grades
+<video controls src="videos/Edit_Demo_Student_Management.mp4" title="demo_edit_students"></video>
 
 ## 6. User Authentication
 In this project, I use Django’s built-in authentication views and decorators to restrict access to authenticated users.
