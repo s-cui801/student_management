@@ -319,3 +319,152 @@ LOGOUT_REDIRECT_URL = '/login/'     # After logout, users will be redirected to 
 #### Problem
 I get HTTP error code 405 (解释一下意思) at first. After debugging and reading documents, I realized that Django's built-in LogoutView requires a POST method by default.
 Therefore I wrap the logout button in a **form** that submits via POST instead of using anchor tag via GET method.
+
+## 7. Search by name
+
+## 8. Pagination
+Modify views and templates to implement pagination of students list.
+First, import Paginator in `views.py` and add the following codes:
+```python
+# views.py
+def students_list(request):
+    # Other codes...
+
+    # Implement pagination (5 students per page)
+    paginator = Paginator(students, 5)  # Show 5 students per page
+    page_number = request.GET.get('page')  # Get the current page number
+    page_obj = paginator.get_page(page_number)  # Get the students for the current page
+
+    context = {
+        'students': students,
+        'form': form,
+        'page_obj': page_obj, # Add page_obj to context
+    }
+    return render(request, 'students/list.html', context)
+```
+Now `page_obj` contains the students on page `page_number`.
+Then modify the correspoding templates. The loop should now be over `page_obj` instead of the full set of `students`.
+```html
+
+```
+### Problem and solution
+I found that when I used searching, after swithcing pages, the search conditions were gone.
+To ensure the search query parameters are maitained in the pagination links, I need to append those parameters to the URLs when generating pagination links(e.g. Previous Page or First Page).
+这里贴代码
+However, because it requires developers to manually append query parameters to the pagination links, this solution can be quite 繁琐, especially if we use more filter parameters.
+A more elegant solution will be:
+这里贴新的代码
+
+## 9. Error Handling
+### Non-existing student
+When user try to access information of a student that does not exist (e.g. by manipulating the url), Django will raise a `DoesNotExist` exception like this:
+![](images/DoesNotExistException.png)
+
+There are two ways to properly handle such errors, either manually or automatically. I choose to manually catch this error and display a custom "Not Found" page.
+First, update `students_detail` view.
+```python
+# views.py
+from django.http import Http404
+'''Display the details of a single student'''
+def students_detail(request, student_id):
+    student = Student.objects.get(id=student_id)
+    # Automatic way: If student doesn't exist, a 404 error will be raised
+    # student = get_object_or_404(Student, pk=pk)  
+    # Manually handle the 404 error
+    try:
+        student = Student.objects.get(id=student_id)
+    except Student.DoesNotExist:
+        raise Http404("Student does not exist")
+    context = {
+        'student': student,
+    }
+    return render(request, 'students/detail.html', context)
+```
+
+Then, create a custom 404 error page in templates called `404.html`. This file should be in the templates of root folder, the same place with `base.html`, because it is a top-level template and should not be tied to any specific functionality.
+```html
+```
+Also modify the debug status and allowed hosts in `settings.py` so that my custom 404 handling page would work:
+```py
+```
+Now when I try to access the detail page of a non-existing student with url `http://127.0.0.1:8000/students/detail/15/` (there is no students with id=15), the custom 404 page will show:
+![alt text](images/StudentNotFound.png)
+
+## 10. Input validation
+
+### Input validation in Forms
+To implement validation for inputs, `forms.py`, `views.py` and corresponding templates will be modified.
+
+Django usually handles validation for form inputs in `forms.py`. 
+
+By adding `clean_<FieldName>>` function to a form class, we can override the default cleaning process and implement customized cleaning and validation. If the value is invalid, it will raise a `ValidationError`. 
+
+#### Names
+To ensure only letters can be used in first names and last names, first we add the following functions to `StudentForm` and `StudentSearchForm` class. The former is for adding a new student and the latter is for searching students.
+```python
+# Custom validation for first name
+    def clean_first_name(self):
+        first_name = self.cleaned_data.get('first_name')
+        
+        # Ensure the name contains only alphabetic characters
+        if not re.match(r'^[A-Za-z]+$', first_name):
+            raise ValidationError('First name must contain only letters.')
+        
+        return first_name
+
+    # Custom validation for last name
+    def clean_last_name(self):
+        last_name = self.cleaned_data.get('last_name')
+        
+        # Ensure the name contains only alphabetic characters
+        if not re.match(r'^[A-Za-z]+$', last_name):
+            raise ValidationError('Last name must contain only letters.')
+```
+
+#### Dates
+
+#### Email
+
+Next, update `views.py` so that if validation fails, the form with errors will be passed back to the templates:
+```html
+
+```
+
+Then the templates
+- Generate invalid message under each field.
+- Retain values for invalid inputs
+#### Problem
+I forget grade field when I wrote the edit.html. By printing debug message, I find the mistake and solve it.
+```python
+if request.method == 'POST':
+        form = StudentForm(request.POST)
+        if form.is_valid():
+            student.first_name = form.cleaned_data['first_name']
+            student.last_name = form.cleaned_data['last_name']
+            student.email = form.cleaned_data['email']
+            student.date_of_birth = form.cleaned_data['date_of_birth']
+            student.enrollment_date = form.cleaned_data['enrollment_date']
+            student.grade = form.cleaned_data['grade']
+            student.save()
+            return HttpResponseRedirect('/students/')
+        else:
+            print("Form is invalid. Errors:", form.errors)  # Debug statement
+```
+### Input validation in pagination
+To ensure that invalid page number input (e.g. `http://127.0.0.1:8000/students/?page=a`) won't crash the page, modify the pagination part in `views.py`. Django will raise a ValueError in the paginator if page number is invalid. I modify my view to default to the first page in such cases:
+```py
+# views.py
+def students_list(request):
+    # Other codes...
+
+    # Implement pagination (5 students per page)
+    paginator = Paginator(students, 5)  # Show 5 students per page
+    page_number = request.GET.get('page')  # Get the current page number
+    try:
+        page_obj = paginator.get_page(page_number)
+    except (ValueError, TypeError):
+        page_obj = paginator.get_page(1)  # Default to the first page if the input is invalid
+    # page_obj = paginator.get_page(page_number)  # Get the students for the current page
+
+    # Other codes...
+```

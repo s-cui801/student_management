@@ -1,8 +1,9 @@
-from django.http import HttpResponseRedirect
-from django.shortcuts import render
+from django.http import HttpResponseRedirect, Http404
+from django.shortcuts import render, get_object_or_404
 from students.models import Student
 from students.forms import StudentForm, StudentSearchForm
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 
 # Create your views here.
@@ -22,15 +23,31 @@ def students_list(request):
         if last_name:
             students = students.filter(last_name__icontains=last_name)
 
+    # Implement pagination (5 students per page)
+    paginator = Paginator(students, 5)  # Show 5 students per page
+    page_number = request.GET.get('page')  # Get the current page number
+    try:
+        page_obj = paginator.get_page(page_number)
+    except (ValueError, TypeError):
+        page_obj = paginator.get_page(1)  # Default to the first page if the input is invalid
+    # page_obj = paginator.get_page(page_number)  # Get the students for the current page
+
     context = {
         'students': students,
         'form': form,
+        'page_obj': page_obj,
     }
     return render(request, 'students/list.html', context)
 
 '''Display the details of a single student'''
 def students_detail(request, student_id):
-    student = Student.objects.get(id=student_id)
+    # student = Student.objects.get(id=student_id)
+    # student = get_object_or_404(Student, pk=pk)  # If student doesn't exist, a 404 error will be raised
+    # Manually handle the 404 error
+    try:
+        student = Student.objects.get(id=student_id)
+    except Student.DoesNotExist:
+        raise Http404("Student does not exist.")
     context = {
         'student': student,
     }
@@ -53,7 +70,12 @@ def students_add(request):
             )
             student.save()
             return HttpResponseRedirect('/students/')
-    context = {
+        else:
+            context = {
+                'form': form,
+            }
+            return render(request, 'students/add.html', context)
+    else: context = {
         'form': StudentForm(),
         }
     return render(request, 'students/add.html', context)
@@ -61,7 +83,12 @@ def students_add(request):
 '''Edit an existing student'''
 @login_required
 def students_edit(request, student_id):
-    student = Student.objects.get(id=student_id)
+    # student = Student.objects.get(id=student_id)
+    try:
+        student = Student.objects.get(id=student_id)
+    except Student.DoesNotExist:
+        raise Http404("Student does not exist.")
+    
     if request.method == 'POST':
         form = StudentForm(request.POST)
         if form.is_valid():
@@ -73,16 +100,20 @@ def students_edit(request, student_id):
             student.grade = form.cleaned_data['grade']
             student.save()
             return HttpResponseRedirect('/students/')
-    context = {
-        'student': student,
-        'form': StudentForm(initial={
+        else:
+            print("Form is invalid. Errors:", form.errors)  # Debug statement
+    else: 
+        form = StudentForm(initial={
             'first_name': student.first_name,
             'last_name': student.last_name,
             'email': student.email,
             'date_of_birth': student.date_of_birth,
             'enrollment_date': student.enrollment_date,
             'grade': student.grade,
-        }),
+        })
+    context = {
+        'form': form,
+        'student': student,
     }
     return render(request, 'students/edit.html', context)
 

@@ -9,7 +9,108 @@
     {% block student %}
     <form method="post">
         {% csrf_token %}
-        {{ form.as_p }}
+
+        <!-- Display Non-Field Errors -->
+        {% if form.non_field_errors %}
+        <div class="error">
+            <ul>
+                {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- First Name Field with Error Handling -->
+        <div class="form-group">
+            <label for="id_first_name">First Name:</label>
+            <input type="text" id="id_first_name" name="first_name" value="{{ form.first_name.value|default_if_none:''  }}" placeholder="Enter first name">
+            {% if form.first_name.errors %}
+                <div class="error">
+                    <ul>
+                        {% for error in form.first_name.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Last Name Field with Error Handling -->
+        <div class="form-group">
+            <label for="id_last_name">Last Name:</label>
+            <input type="text" id="id_last_name" name="last_name" value="{{ form.last_name.value|default_if_none:''  }}" placeholder="Enter last name">
+            {% if form.last_name.errors %}
+                <div class="error">
+                    <ul>
+                        {% for error in form.last_name.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Email Field -->
+        <div class="form-group">
+            <label for="id_email">Email:</label>
+            <input type="email" id="id_email" name="email" value="{{ form.email.value|default_if_none:''  }}" placeholder="Enter email">
+            {% if form.email.errors %}
+                <div class="error">
+                    <ul>
+                        {% for error in form.email.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Date of Birth Field with Placeholder for Date Format -->
+        <div class="form-group">
+            <label for="id_date_of_birth">Date of Birth:</label>
+            {{ form.date_of_birth }}
+            {% if form.date_of_birth.errors %}
+                <div class="error">
+                    <ul>
+                        {% for error in form.date_of_birth.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Enrollment Date Field with Placeholder for Date Format -->
+        <div class="form-group">
+            <label for="id_date_of_birth">Enrollment Date:</label>
+            {{ form.enrollment_date }}
+            {% if form.enrollment_date.errors %}
+                <div class="error">
+                    <ul>
+                        {% for error in form.enrollment_date.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Grade Field-->
+        <div>
+            <label for="'id_grade">Grade:</label>
+            {{ form.grade }}
+            {% if form.grade.errors %}
+                <div class="error">
+                    <ul>
+                        {% for error in form.grade.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+
         <button type="submit" class="btn btn-primary">Submit</button>
     </form>
     {% endblock student %}
